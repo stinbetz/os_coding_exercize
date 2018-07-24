@@ -26,7 +26,6 @@ def test_q1_1_b(setup_pct):
     market_segments = test_account.get_market_segments()
 
     assert isinstance(market_segments, list)
-    # assert market_segments == [x.name for x in [test_ms_1, test_ms_2]]
     assert market_segments == [test_ms_1, test_ms_2]
 
 
@@ -39,7 +38,8 @@ def test_q1_1_c(setup_pct):
 
     # new_segment_ms
 
-    assert pct.new_segment_ms and pct.new_segment_ms in test_account.get_market_segments()
+    assert pct.new_segment_ms and pct.new_segment_ms\
+        in test_account.get_market_segments()
 
 
 def test_q1_1_d(setup_pct):
@@ -67,12 +67,16 @@ def test_q1_1_e(setup_pct):
 
     assert test_ms_1 in test_account_1.get_market_segments()
     assert test_ms_2 in test_account_1.get_market_segments()
-    assert test_account_1.name in [x.name for x in test_ms_1.__dict__['_accounts']]
-    assert test_account_2.name in [x.name for x in test_ms_1.__dict__['_accounts']]
+    assert test_account_1.name in\
+        [x.name for x in test_ms_1.__dict__['_accounts']]
+    assert test_account_2.name in\
+        [x.name for x in test_ms_1.__dict__['_accounts']]
     assert test_ms_1 in test_account_2.get_market_segments()
     assert test_ms_2 in test_account_2.get_market_segments()
-    assert test_account_1.name in [x.name for x in test_ms_2.__dict__['_accounts']]
-    assert test_account_2.name in [x.name for x in test_ms_2.__dict__['_accounts']]
+    assert test_account_1.name in\
+        [x.name for x in test_ms_2.__dict__['_accounts']]
+    assert test_account_2.name in\
+        [x.name for x in test_ms_2.__dict__['_accounts']]
 
 
 def test_q2_1(setup_pct):
@@ -100,23 +104,20 @@ def test_print_tree(setup_pct, capsys):
                           market_segments=[manufacturing_ms, rd_ms])
     child1 = pct.ChildAccount(name='Jet Engines', parent=account)
     child1.add_to_market_segment(aero_ms)
-    child2 = pct.ChildAccount(name='DoD Contracts', parent=child1, sales_rep="William Testperson")
+    child2 = pct.ChildAccount(name='DoD Contracts',
+                              parent=child1,
+                              sales_rep="William Testperson")
     manufacturing_ms.remove_account(child2)
     child2.add_to_market_segment(defense_ms)
-    child3 = pct.ChildAccount(name='Appliances', parent=account, sales_rep="Janet Testperson",
-                              market_segments=[manufacturing_ms, cons_goods_ms])
+    child3 = pct.ChildAccount(name='Appliances',
+                              parent=account,
+                              sales_rep="Janet Testperson",
+                              market_segments=[manufacturing_ms,
+                                               cons_goods_ms])
     child4 = pct.ChildAccount(name="Washing Machines", parent=child3)
     child4.remove_from_market_segment(manufacturing_ms)
     pct.print_tree(account)
     out, _ = capsys.readouterr()
-
-    print("jjb dbg out:\n{}".format(out))
-    print("jjb dbg test:\n{}".format("""> GE (Manufacturing, R&D): Daniel Testperson
---> Jet Engines (Manufacturing, R&D, Aerospace): Daniel Testperson
-----> DoD Contracts (R&D, Aerospace, Defense): William Testperson
---> Appliances (Manufacturing, Consumer Goods): Janet Testperson
-----> Washing Machines (Consumer Goods): Janet Testperson"""))
-
 
     assert """> GE (Manufacturing, R&D): Daniel Testperson
 --> Jet Engines (Manufacturing, R&D, Aerospace): Daniel Testperson
