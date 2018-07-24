@@ -22,8 +22,8 @@ Your final submissions should:
 - Employ a DRY programming style.
 """
 
-from typing import List
 import copy
+import re
 
 
 class SalesRep(object):
@@ -70,41 +70,19 @@ class SalesRep(object):
 # |                                                                            |
 # |       Additionally, modify the Account class so that it supports the       |
 # |       following MarketSegment-related use cases:                           |
-# |     a  - An Account may be instantiated with an iterable of MarketSegments |
+# |       - An Account may be instantiated with an iterable of MarketSegments  |
 # |         to which it's related.                                             |
-# |     b  - An Account can provide an iterable of the MarketSegments it's     |
+# |       - An Account can provide an iterable of the MarketSegments it's      |
 # |         related to.                                                        |
-# |     c  - An Account can be related to a new MarketSegment.                 |
-# |     d  - An Account can be removed from one of the MarketSegments it's     |
+# |       - An Account can be related to a new MarketSegment.                  |
+# |       - An Account can be removed from one of the MarketSegments it's      |
 # |         related to.                                                        |
 # |                                                                            |
-# |     e  A MarketSegment may be associated with more than one Account, and   |
+# |       A MarketSegment may be associated with more than one Account, and    |
 # |       and Account may be associated with more than one MarketSegment.      |
 # |                                                                            |
 # +----------------------------------------------------------------------------+
-
-
-# Data Management functions
-dm_accounts = []
-dm_market_segments = []
-
-
-def _dm_add_account(account):
-    dm_accounts.append(account)
-
-
-def _dm_remove_account(account):
-    dm_accounts.remove(account)
-
-
-def _dm_add_market_segement(market_segment):
-    dm_market_segments.append(market_segment)
-
-
-def _dm_remove_market_segment(market_segment):
-    dm_market_segments.remove(market_segment)
-
-
+       
 class MarketSegment(object):
     """
     Models a MarketSegment. MarketSegments know their name and contain an
@@ -114,10 +92,11 @@ class MarketSegment(object):
         self.name = name
         if accounts:
             self._accounts = accounts
+            for account in accounts:
+                account.add_to_market_segment(self, add_account_to_ms=False)
         else:
             self._accounts = []
-
-        _dm_add_market_segement(self)
+        check_for_existing_market_segment(self)
 
     def __str__(self):
         return f"{self.name}"
@@ -125,21 +104,24 @@ class MarketSegment(object):
     def __repr__(self):
         return f"{self.name}: {self._accounts}"
 
-    def add_account(self, account, add_to_account=True):
-        if account.name not in [x.name for x in self._accounts]:
-            if add_to_account:
-                account.add_market_segment(self, add_to_ms=False)
-            self._accounts.append(account)
-        else:
+    def add_account(self, account, add_ms_to_account=True):
+        if account.name in [account.name for account in self._accounts]:
             raise ValueError("{} already associated to {}".format(account.name, self.name))
+        self._accounts.append(account)
+        if add_ms_to_account:
+            account.add_to_market_segment(self, add_account_to_ms=False)
 
-    def remove_account(self, account):
-        if account in self._accounts:
-            account.remove_from_market_segment(self)
-            try:
-                self._accounts.remove(account)
-            except ValueError:
-                pass
+    def remove_account(self, account, remove_ms_from_account=True):
+        if account.name in [account.name for account in self._accounts]:
+            self._accounts.remove(account)
+            if remove_ms_from_account:
+                account.remove_from_market_segment(self)
+        else:
+            # nothing to do, the account wasn't part of the market segment so we're done
+            pass
+
+    def get_accounts(self):
+        return self._accounts
 
 
 class Account(object):
@@ -150,30 +132,16 @@ class Account(object):
     def __init__(self, name, sales_rep=None, market_segments=None):
         self.name = name
         self._sales_rep = sales_rep
+        self._children = []
         if market_segments:
             self._market_segments = market_segments
-            for market_segment in self._market_segments:
-                market_segment.add_account(self, add_to_account=False)
+            for market_segment in market_segments:
+                market_segment.add_account(self, add_ms_to_account=False)
         else:
             self._market_segments = []
-        self._children = []
-
-        _dm_add_account(self)
 
     def __str__(self):
         return "{self.name}".format(self=self)
-
-    def __repr__(self):
-        return "{self.name}: {self._market_segments}".format(self=self)
-
-    def add_market_segment(self, market_segment: MarketSegment, add_to_ms=True):
-        if market_segment not in self._market_segments:
-            if add_to_ms:
-                market_segment.add_account(self, add_to_account=False)
-            # print("jjb dbg adding {} to {}".format(market_segment.name, self.name))
-            self._market_segments.append(market_segment)
-        else:
-            raise ValueError("{} already associated to {}".format(self.name, market_segment.name))
 
     def get_sales_rep(self):
         return self._sales_rep
@@ -181,29 +149,41 @@ class Account(object):
     def set_sales_rep(self, sales_rep):
         self._sales_rep = sales_rep
 
-    def get_market_segments(self):
-        # return [x.name for x in self._market_segments]
-        return self._market_segments
-
-    def remove_from_market_segment(self, market_segment: MarketSegment):
-        if market_segment in self._market_segments:
-            # print("jjb dbg removing {} from {}".format(market_segment.name, self.name))
-            self._market_segments.remove(market_segment)
-            market_segment.remove_account(self)
-
-    def set_market_segments(self, segments: List[MarketSegment]):
+    def set_market_segments(self, segments):
         """
         Q1-2. Implement this method, which takes an iterable of MarketSegments to
               which this Account will be attached. This method REPLACES all
               MarketSegment associations, so be sure to update each MarketSegment's
               internal representation of associated Accounts appropriately.
         """
-        for segment in self._market_segments:
-            if segment not in segments:
-                segment.remove_account(self)
-
+        for existing_segment in self._market_segments:
+            if existing_segment not in segments:
+                existing_segment.remove_account(self)
         for segment in segments:
-            segment.add_account(self, add_to_account=False)
+            try:
+                self._market_segments.append(segment)
+                segment.add_account(self, add_ms_to_account=False)
+            except ValueError:
+                # this account was already associated to that segment, continue on
+                continue
+
+    def add_to_market_segment(self, market_segment, add_account_to_ms=True):
+        if market_segment in self._market_segments:
+            raise ValueError(f"{self.name} already part of {market_segment.name}")
+        self._market_segments.append(market_segment)
+        if add_account_to_ms:
+            market_segment.add_account(self, add_ms_to_account=False)
+
+    def remove_from_market_segment(self, market_segment):
+        if market_segment in self._market_segments:
+            self._market_segments.remove(market_segment)
+            market_segment.remove_account(self)
+        else:
+            # nothing to do, the market segment was already not in the account market segments
+            pass
+
+    def get_market_segments(self):
+        return self._market_segments
 
     def add_child(self, child_account):
         self._children.append(child_account)
@@ -249,7 +229,6 @@ class Account(object):
 # |     its parent.                                                            |
 # |                                                                            |
 # +----------------------------------------------------------------------------+
-
 class ChildAccount(Account):
     def __init__(self, name, parent, sales_rep=None, market_segments=None):
         self.name = name
@@ -261,15 +240,13 @@ class ChildAccount(Account):
         if market_segments:
             self._market_segments = market_segments
             for market_segment in self._market_segments:
-                market_segment.add_account(self, add_to_account=False)
+                market_segment.add_account(self, add_ms_to_account=False)
         else:
-            self._market_segments = copy.deepcopy(parent.get_market_segments())
+            self._market_segments = copy.copy(parent.get_market_segments())
             for market_segment in self._market_segments:
-                market_segment.add_account(self, add_to_account=False)
+                market_segment.add_account(self, add_ms_to_account=False)
 
         parent.add_child(self)
-
-        _dm_add_account(self)
 
 
 # +----------------------------------------------------------------------------+
@@ -304,6 +281,32 @@ def print_tree(account, level=0):
     print(f'{2*level*"-"}> {account.name} ({markets_output[:-2]}): {account.get_sales_rep()}')
     for child in account.get_children():
         print_tree(child, level=level+1)
+
+
+def print_account(account):
+    markets_output = ""
+    for market in account.get_market_segments():
+        markets_output += market.name.strip("\'") + ", "
+    markets_output = markets_output.strip("\'")
+    print(f'{account.name} ({markets_output[:-2]}): {account.get_sales_rep()}')
+
+
+def check_for_existing_market_segment(segment):
+    for var in list(globals().keys()):
+        if isinstance(eval(f"{var}"), MarketSegment):
+            if eval(f"{var}.name") == segment.name:
+                print("jjb dbg found the thing in {}".format(var))
+                return
+
+    # no matching segment found in session, create it!
+    # print("jjb dbg hope this works soon")
+    var_name = "{}_ms".format(segment.name.replace(" ", "_"))
+    regex = re.compile('[^a-zA-Z0-9_]')
+    var_name = regex.sub("", var_name)
+    # exec("global {name}; {name} = segment".format(name=var_name))
+    # print("jjb dbg adding {}".format(var_name))
+    globals()[var_name] = segment
+    # globals().update({"{}".format(var_name): segment})
 
 
 # +----------------------------------------------------------------------------+
