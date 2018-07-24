@@ -89,30 +89,67 @@ class MarketSegment(object):
     iterable of the Accounts they're related to.
     """
     def __init__(self, name, accounts=None):
+        """
+        initialize the MarketSegment instance
+        :param name: string
+        :param accounts: List[Account]
+        """
         self.name = name
         if accounts:
             self._accounts = accounts
             for account in accounts:
+                # add_account_to_ms is False because we've already added the
+                # account to this segment, don't want to do it again
                 account.add_to_market_segment(self, add_account_to_ms=False)
         else:
             self._accounts = []
         check_for_existing_market_segment(self)
 
     def __str__(self):
-        return f"{self.name}"
+        return "{self.name}".format(self=self)
 
     def __repr__(self):
-        return f"{self.name}: {self._accounts}"
+        return "{self.name}: {self._accounts}".format(self=self)
 
     def add_account(self, account, add_ms_to_account=True):
+        """
+        provide functionality to associate an account with the market segment
+        Raises ValueError if the market segment already knows about the
+        account
+
+        :param account: Account object that should be associated
+        :param add_ms_to_account: Boolean, False if the Account already knows
+                                  the market segment, True if it needs to be
+                                  added -- defaulting to True allows for
+                                  direct calling of this function, calling this
+                                  from within the Account class should ALWAYS
+                                  set this to False
+        :return: None
+        """
+        # check if name already exists and throw ValueError if it does
+        # it doesn't make sense to add an account twice -- this could be
+        # refactored to use a set instead
+        # check for accounts by name per Q2 bonus below
         if account.name in [account.name for account in self._accounts]:
             raise ValueError("{} already associated to {}".format(account.name,
                                                                   self.name))
         self._accounts.append(account)
         if add_ms_to_account:
+            # add_account_to_ms is False because we've already added the
+            # account to this segment, don't want to do it again
             account.add_to_market_segment(self, add_account_to_ms=False)
 
     def remove_account(self, account, remove_ms_from_account=True):
+        """
+        disassociate the account from this MarketSegment
+        :param account: Account
+        :param remove_ms_from_account: Boolean, False if the segment has
+                                       already been removed from the account,
+                                       otherwise True which allows for calling
+                                       this from outside of an Account instance
+        :return: None
+        """
+        # check for accounts by name per Q2 bonus below
         if account.name in [account.name for account in self._accounts]:
             self._accounts.remove(account)
             if remove_ms_from_account:
@@ -123,6 +160,10 @@ class MarketSegment(object):
             pass
 
     def get_accounts(self):
+        """
+        get the accounts associated with this MarketSegment
+        :return: List[Account]
+        """
         return self._accounts
 
 
@@ -132,12 +173,20 @@ class Account(object):
     assigned to, and the market segments they're a part of.
     """
     def __init__(self, name, sales_rep=None, market_segments=None):
+        """
+        setup this instance of Account
+        :param name: string
+        :param sales_rep: SalesRep
+        :param market_segments: List[MarketSegment]
+        """
         self.name = name
         self._sales_rep = sales_rep
         self._children = []
         if market_segments:
             self._market_segments = market_segments
             for market_segment in market_segments:
+                # add_ms_to_account needs to be False so we don't try to add
+                # the market segment to the account again
                 market_segment.add_account(self, add_ms_to_account=False)
         else:
             self._market_segments = []
@@ -146,12 +195,26 @@ class Account(object):
         return "{self.name}".format(self=self)
 
     def get_sales_rep(self):
+        """
+        get the sales rep assocated to this Account
+        :return: SalesRep
+        """
         return self._sales_rep
 
     def set_sales_rep(self, sales_rep):
+        """
+        set the sales rep for this Account
+        :param sales_rep: SalesRep
+        :return: None
+        """
         self._sales_rep = sales_rep
 
     def set_market_segments(self, segments):
+        """
+        replaces the list of market segments for this Account
+        :param segments: List[MarketSegment]
+        :return:
+        """
         """
         Q1-2. Implement this method, which takes an iterable of MarketSegments
               to which this Account will be attached. This method REPLACES all
@@ -160,11 +223,17 @@ class Account(object):
               appropriately.
         """
         for existing_segment in self._market_segments:
+            # only need to remove the ones that aren't in the new list
             if existing_segment not in segments:
                 existing_segment.remove_account(self)
         for segment in segments:
+            # add segments, catch ValueErrors which means the segment was
+            # already part of this account, therefor no followup action is
+            # needed
             try:
                 self._market_segments.append(segment)
+                # add_ms_to_account needs to be False because we've already
+                # added the segment to this account
                 segment.add_account(self, add_ms_to_account=False)
             except ValueError:
                 # this account was already associated to that segment,
@@ -172,30 +241,59 @@ class Account(object):
                 continue
 
     def add_to_market_segment(self, market_segment, add_account_to_ms=True):
+        """
+        add a market segment to this account
+        :param market_segment: MarketSegment
+        :param add_account_to_ms: Boolean, False if the market segment already
+                                  knows about this account, otherwise True.
+                                  This allows for calling from within the
+                                  MarketSegment class (False) or outside (True)
+        :return: None
+        """
         if market_segment in self._market_segments:
             raise ValueError("{name} already part of {ms_name}"
                              .format(name=self.name,
                                      ms_name=market_segment.name))
         self._market_segments.append(market_segment)
         if add_account_to_ms:
+            # add_ms_to_account needs to be False since this account already
+            # knows about the market segment
             market_segment.add_account(self, add_ms_to_account=False)
 
     def remove_from_market_segment(self, market_segment):
+        """
+        remove the market segment from this account
+        :param market_segment: MarketSegment
+        :return:
+        """
         if market_segment in self._market_segments:
             self._market_segments.remove(market_segment)
             market_segment.remove_account(self)
         else:
-            # nothing to do, the market segment was alread
+            # nothing to do, the market segment was already
             # not in the account market segments
             pass
 
     def get_market_segments(self):
+        """
+        helper function that returns market segments in a list
+        :return: List[MarketSegment]
+        """
         return self._market_segments
 
     def add_child(self, child_account):
+        """
+        associates an instance of ChildAccount to this Account
+        :param child_account: ChildAccount
+        :return:
+        """
         self._children.append(child_account)
 
     def get_children(self):
+        """
+        get the list of children (if any) for this account
+        :return: List[ChildAccount]
+        """
         return self._children
 
 
@@ -237,22 +335,43 @@ class Account(object):
 # |                                                                           |
 # +---------------------------------------------------------------------------+
 class ChildAccount(Account):
+    """
+    A ChildAccount is the same as a regular Account except that it accepts a
+    parent Account (or ChildAccount) and inherits the sales_rep and
+    market_segments if there are any.  Only need to override the init
+    because after setup, this behaves like a normal Account.
+    """
     def __init__(self, name, parent, sales_rep=None, market_segments=None):
+        """
+        setup the ChildAccount
+        :param name: string
+        :param parent: Account/ChildAccount
+        :param sales_rep: SalesRep
+        :param market_segments: List[MarketSegments]
+        """
         self.name = name
         self._children = []
         if not sales_rep:
+            # inherit the parents sales rep since none was given
             self._sales_rep = parent.get_sales_rep()
         else:
             self._sales_rep = sales_rep
         if market_segments:
+            # add market segments to this account and tell those market
+            # segments this account is a member
             self._market_segments = market_segments
             for market_segment in self._market_segments:
                 market_segment.add_account(self, add_ms_to_account=False)
         else:
+            # make a copy of the parents market segments (so the parents
+            # market segments don't change with this child) and add the
+            # segments then inform the segments to add this account
             self._market_segments = copy.copy(parent.get_market_segments())
             for market_segment in self._market_segments:
                 market_segment.add_account(self, add_ms_to_account=False)
 
+        # the parent is the only one maintaining this association, so inform
+        # the parent that they are, in fact, a parent
         parent.add_child(self)
 
 
@@ -269,6 +388,13 @@ class ChildAccount(Account):
 # ---------------------------------------------------------------------------+
 
 def print_tree(account, level=0):
+    """
+    print a hierarchical structure representing an account and all child
+    accounts associated to it to the console
+    :param account: Account
+    :param level: int (used for recursive calls only)
+    :return: None
+    """
     """ In the example output below, "GE" is the root account, "Jet Engines"
         and "Appliances" are first-degree ChildAccounts, and "DoD Contracts"
         and "Washing Machines" are second-degree ChildAccounts.
@@ -280,21 +406,33 @@ def print_tree(account, level=0):
         Appliances (Manufacturing, Consumer Goods): Janet Testperson
             Washing Machines (Consumer Goods): Janet Testperson
     """
-    # raise NotImplementedError()
     markets_output = ""
+    # work a little magic to properly format the names of the market segments
+    # specifically strip off the leading and trailing quotes and add a
+    # separating comma
     for market in account.get_market_segments():
         markets_output += market.name.strip("\'") + ", "
     markets_output = markets_output.strip("\'")
+
+    # print a row to console
     print("{aarow}> {ac_name} ({markets}): {rep}"
           .format(arrow=2*level*"-",
                   ac_name=account.name,
                   markets=markets_output[:-2],
                   rep=account.get_sales_rep()))
+
+    # recursively call print on the children (if any) Base Case: no children
     for child in account.get_children():
         print_tree(child, level=level+1)
 
 
 def print_account(account):
+    """
+    not functionaly needed, but was used for debugging purposes, prints a
+    simple one line representation of an account, but no children
+    :param account: Account
+    :return:
+    """
     markets_output = ""
     for market in account.get_market_segments():
         markets_output += market.name.strip("\'") + ", "
@@ -303,12 +441,24 @@ def print_account(account):
 
 
 def check_for_existing_market_segment(segment):
+    """
+    utility function that checks the global scope for an object that matches
+    the one passed in, if it doesn't exist create the reference in the global
+    scope, this allows for "anonymous" object creation and to still get the
+    object back later
+    Note, the new object name will be the name property with special characters
+    removed and spaces turned to _ and appended with "_ms" so a name of
+    "My Awesome Video Games!" becomes "My_Awesome_Video_Games_ms"
+    This is only called from the MarketSegment constructor
+    :param segment: MarketSegment
+    :return: None (side effect of adding to the global scope)
+    """
     for var in list(globals().keys()):
-        if isinstance(eval(f"{var}"), MarketSegment):
-            if eval(f"{var}.name") == segment.name:
+        if isinstance(eval("{var}".format(var=var)), MarketSegment):
+            if eval("{var}.name".format(var=var)) == segment.name:
                 return
 
-    # no matching segment found in session, create it!
+    # no matching segment found in globals, create it!
     var_name = "{}_ms".format(segment.name.replace(" ", "_"))
     regex = re.compile('[^a-zA-Z0-9_]')
     var_name = regex.sub("", var_name)
