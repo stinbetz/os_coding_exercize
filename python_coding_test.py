@@ -349,6 +349,7 @@ class ChildAccount(Account):
         :param sales_rep: SalesRep
         :param market_segments: List[MarketSegments]
         """
+        super().__init__(name, sales_rep, market_segments)
         self.name = name
         self._children = []
         if not sales_rep:
@@ -415,7 +416,7 @@ def print_tree(account, level=0):
     markets_output = markets_output.strip("\'")
 
     # print a row to console
-    print("{aarow}> {ac_name} ({markets}): {rep}"
+    print("{arrow}> {ac_name} ({markets}): {rep}"
           .format(arrow=2*level*"-",
                   ac_name=account.name,
                   markets=markets_output[:-2],
@@ -483,22 +484,61 @@ def check_for_existing_market_segment(segment):
 # SALESREP_TBL (PRIMARY KEY repid INT,
 #               firstname VARCHAR(50),
 #               lastname VARCHAR(50))
+# CREATE TABLE salesrep_tbl (repid int PRIMARY KEY,
+#                            firstname varchar(50),
+#                            lastname varchar(50));
 #
 # MARKETSEGMENT_TBL (PRIMARY KEY segmentid INT,
 #                    name VARCHAR(50))
+# CREATE TABLE marketsegment_tbl (segmentid int PRIMARY KEY,
+#                                 name varchar(50));
 #
 # ACCOUNT_TBL (PRIMARY KEY accountid INT,
 #              name VARCHAR(50),
 #              FOREIGN KEY repid (SALESREP_TBL.repid))
+# CREATE TABLE account_tbl (accountid int PRIMARY KEY,
+#                           name varchar(50),
+#                           repid int,
+#                           FOREIGN KEY (repid)
+#                               REFERENCES salesrep_tbl (repid);
 #
 # JNCTION_TBL (accountid INT,
 #              segmentid INT)
+# CREATE TABLE jnction_tbl (accountid int,
+#                           segmentid int);
 #
 #
 # Q5-2
-# SELECT account.name, rep.name FROM ACCOUNT_TBL AS account
-# INNER JOIN SALESREP_TBL AS rep ON account.repid=rep.repid
-# INNER JOIN JNCITION_TBL as junction ON junction.accountid=account.accountid
+#
+# insert into marketsegment_tbl (segmentid, name) values (1234, "biomedical");
+# insert into marketsegment_tbl (segmentid, name) values (1235, "industrial");
+# insert into marketsegment_tbl (segmentid, name) values (1236, "electronics");
+# insert into account_tbl (accountid, name, repid) values (2222, "Apple", 456);
+# insert into account_tbl (accountid, name, repid)
+#                          values (3333, "Nintendo", 123);
+# insert into account_tbl (accountid, name, repid)
+#                          values (4444, "Best Buy", 123);
+# insert into account_tbl (accountid, name, repid) values (5555, "Case", 456);
+# insert into account_tbl (accountid, name, repid)
+#                          values (6666, "Caterpillar", 456);
+# insert into account_tbl (accountid, name, repid)
+#                          values (7777, "John Deere", 456);
+# insert into account_tbl (accountid, name, repid)
+#                          values (8888, "Medtronic", 123);
+# insert into account_tbl (accountid, name, repid)
+#                          values (9999, "Boston Sci", 456);
+# insert into jnction_tbl (accountid, segmentid) values (2222, 1236);
+# insert into jnction_tbl (accountid, segmentid) values (3333, 1236);
+# insert into jnction_tbl (accountid, segmentid) values (4444, 1236);
+# insert into jnction_tbl (accountid, segmentid) values (5555, 1235);
+# insert into jnction_tbl (accountid, segmentid) values (6666, 1235);
+# insert into jnction_tbl (accountid, segmentid) values (7777, 1235);
+# insert into jnction_tbl (accountid, segmentid) values (9999, 1234);
+# insert into jnction_tbl (accountid, segmentid) values (8888, 1234);
+#
+# SELECT account.name, rep.firstname, rep.lastname FROM account_tbl AS account
+# INNER JOIN salesrep_tbl AS rep ON account.repid=rep.repid
+# INNER JOIN jnction_tbl as junction ON junction.accountid=account.accountid
 # INNER JOIN
-#     (SELECT segmentid FROM MARKETSEGMENT_TBL WHERE name="Consumer Goods")
+#     (SELECT segmentid FROM marketsegment_tbl WHERE name="electronics")
 #           AS segment ON segment.segmentid=junction.segmentid;
